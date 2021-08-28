@@ -37,7 +37,6 @@ LDLIBS       := -pthread
 ARFLAGS      := -rc
 
 so_LDFLAGS   := -shared -Wl,-soname,$(soname).$(socompat)
-test_LDLIBS  := $(unityarchive) $(archive)
 
 LNFLAGS      := -sf
 MKDIRFLAGS   := -p
@@ -48,7 +47,6 @@ QUIET        := @
 obj          := $(patsubst $(srcdir)/%.$(cext),$(builddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
 testobj      := $(patsubst $(testdir)/%.$(cext),$(testbuilddir)/%.$(oext),$(wildcard $(testdir)/*.$(cext)))
 
-
 define gen-test-link-rules
 $(strip
     $(foreach __o,$(testobj),
@@ -56,7 +54,7 @@ $(strip
             $(eval __bin := $(builddir)/$(basename $(notdir $(__o))))
             $(__bin): $(__o) $(patsubst %.$(oext),%_runner.$(oext),$(__o)) $(archive) $(unityarchive) | $(builddir)
 	            $$(info [LD] $$@)
-	            $(QUIET)$(CC) -o $$@ $$^ $(LDFLAGS) $(LDLIBS)
+	            $(QUIET)$(CC) -o $$@ $$^ $$(LDFLAGS) $$(LDLIBS)
 
             check_$(notdir $(__bin)): $(__bin)
 	            $(QUIET)$$^
@@ -106,6 +104,9 @@ $(call gen-test-link-rules)
 test:
 
 .PHONY: check
+check: CFLAGS   += -fsanitize=thread,undefined -g
+check: CPPFLAGS := $(filter-out -DNDEBUG,$(CPPFLAGS))
+check: LDFLAGS  += -fsanitize=thread,undefined
 check:
 
 $(builddir):
