@@ -8,7 +8,7 @@
 #include <stddef.h>
 
 #ifndef THRDPOOL_PROCQ_CAPACITY
-#define THRDPOOL_PROCQ_CAPACITY 8u
+#define THRDPOOL_PROCQ_CAPACITY 32u
 #endif
 
 #define thrdpool_is_power_of_2(x)    \
