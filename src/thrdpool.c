@@ -45,11 +45,12 @@ static void *thrdpool_wait(void *p) {
 bool thrdpool_destroy_internal(struct thrdpool *pool, size_t nthreads) {
     bool success = true;
     int err;
-    /* Notify about pending join and wake up worker threads */
+    /* Notify about pending join */
     pthread_mutex_lock(&pool->lock);
     pool->join = true;
     pthread_mutex_unlock(&pool->lock);
 
+    /* Wake up worker threads */
     err = pthread_cond_broadcast(&pool->cv);
     if(err) {
         fprintf(stderr, "Error unblocking threads for joining: %s\n", strerror(errno));
@@ -122,16 +123,15 @@ epilogue:
 }
 
 bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc) {
-    bool success = true;
+    bool success;
 
     pthread_mutex_lock(&pool->lock);
     success = thrdpool_procq_push(&pool->q, proc);
     pthread_mutex_unlock(&pool->lock);
 
-    if(!success) {
-        return false;
+    if(success) {
+        pthread_cond_signal(&pool->cv);
     }
 
-    pthread_cond_signal(&pool->cv);
-    return true;
+    return success;
 }
