@@ -90,9 +90,9 @@ $(testbuilddir)/%.$(oext): $(gendir)/%.$(cext) $(unityarchive) | $(testbuilddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(gendir)/%$(runsuffix).$(cext): $(testdir)/%.$(cext) | $(gendir)
+$(gendir)/%$(runsuffix).$(cext): $(testdir)/%.$(cext) $(unityarchive) | $(gendir)
 	$(info [RB] $(notdir $@))
-	$(QUIET)$(RUBY) $(rbgen) $^ $@
+	$(QUIET)$(RUBY) $(rbgen) $< $@
 
 $(unityarchive):
 	$(QUIET)git submodule update --init
