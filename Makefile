@@ -82,11 +82,11 @@ $(builddir)/%.$(oext): $(srcdir)/%.$(cext) | $(builddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(testbuilddir)/%.$(oext): $(testdir)/%.$(cext) | $(testbuilddir)
+$(testbuilddir)/%.$(oext): $(testdir)/%.$(cext) $(unityarchive) | $(testbuilddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(testbuilddir)/%.$(oext): $(gendir)/%.$(cext) | $(testbuilddir)
+$(testbuilddir)/%.$(oext): $(gendir)/%.$(cext) $(unityarchive) | $(testbuilddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
@@ -95,7 +95,8 @@ $(gendir)/%$(runsuffix).$(cext): $(testdir)/%.$(cext) | $(gendir)
 	$(QUIET)$(RUBY) $(rbgen) $^ $@
 
 $(unityarchive):
-	$(QUIET)$(CMAKE) $(unitydir)
+	$(QUIET)git submodule update --init
+	$(QUIET)$(CMAKE) -B $(unitydir) $(unitydir)
 	$(QIUET)$(MAKE) -C $(unitydir)
 
 $(call gen-test-link-rules)
