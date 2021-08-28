@@ -33,6 +33,9 @@ struct thrdpool {
 #define thrdpool_schedule(u, ...)                   \
     thrdpool_schedule_impl(&(u)->d_pool, __VA_ARGS__)
 
+#define thrdpool_size(u)                            \
+    (u)->d_pool.size
+
 #define thrdpool_scheduled_tasks(u)                 \
     thrdpool_scheduled_tasks_impl(&(u)->d_pool)
 
