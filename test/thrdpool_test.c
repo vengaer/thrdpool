@@ -132,7 +132,10 @@ void test_scheduling_20_workers(void) {
     pthread_mutex_lock(&lock);
 
     for(unsigned i = 0u; i < max_enq; i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
+        /* If queue is full, allow workers some time to pick tasks */
+        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value })) {
+            pthread_yield();
+        }
     }
 
     while(value < max_enq) {
@@ -157,7 +160,10 @@ void test_scheduling_128_workers(void) {
     pthread_mutex_lock(&lock);
 
     for(unsigned i = 0u; i < max_enq; i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
+        /* If queue is full, allow workers time to pick tasks */
+        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value })) {
+            pthread_yield();
+        }
     }
 
     while(value < max_enq) {

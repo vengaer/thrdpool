@@ -103,12 +103,12 @@ $(call gen-test-link-rules)
 
 .PHONY: test
 test: CFLAGS    += -fsanitize=thread,undefined -g
-test: CPPFLAGS  := $(filter-out -DNDEBUG,$(CPPFLAGS))
+test: CPPFLAGS  := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
 test: LDFLAGS   += -fsanitize=thread,undefined
 
 .PHONY: check
 check: CFLAGS   += -fsanitize=thread,undefined -g
-check: CPPFLAGS := $(filter-out -DNDEBUG,$(CPPFLAGS))
+check: CPPFLAGS := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
 check: LDFLAGS  += -fsanitize=thread,undefined
 
 $(builddir):
