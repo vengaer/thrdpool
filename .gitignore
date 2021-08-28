@@ -1,0 +1,3 @@
+build/
+libthrdpool*
+thrdpooltest
