@@ -31,10 +31,10 @@ RM           := rm
 RUBY         := ruby
 CMAKE        := cmake
 
-CFLAGS       := -Wall -Wextra -Wpedantic -std=c99 -g -fPIC -MD -MP -c
+CFLAGS       := -Wall -Wextra -Wpedantic -std=c99 -g -fPIC -MD -MP -c -pthread
 CPPFLAGS     := -I$(root) -I$(unitydir)/src
 LDFLAGS      := -L$(unitydir) -L$(root)
-LDLIBS       :=
+LDLIBS       := -pthread
 ARFLAGS      := -rc
 
 so_LDFLAGS   := -shared -Wl,-soname,$(soname).$(socompat)
