@@ -53,7 +53,7 @@ $(strip
         $(eval
             $(eval __bin := $(builddir)/$(basename $(notdir $(__o))))
             $(__bin): $(__o) $(patsubst %.$(oext),%_runner.$(oext),$(__o)) $(archive) $(unityarchive) | $(builddir)
-	            $$(info [LD] $$@)
+	            $$(info [LD] $$(notdir $$@))
 	            $(QUIET)$(CC) -o $$@ $$^ $$(LDFLAGS) $$(LDLIBS)
 
             check_$(notdir $(__bin)): $(__bin)
