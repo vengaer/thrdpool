@@ -11,9 +11,9 @@
 
 struct thrdpool {
     bool join;
+    size_t size;
     pthread_cond_t cv;
     pthread_mutex_t lock;
-    size_t size;
     struct thrdpool_procq q;
     pthread_t workers[];
 };
