@@ -68,7 +68,7 @@ void test_basic_scheduling(void) {
     TEST_ASSERT_TRUE(thrdpool_init(&pool));
 
     pthread_mutex_lock(&lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_inc, .args = &value }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
 
     pthread_cond_wait(&cv, &lock);
 
@@ -78,7 +78,7 @@ void test_basic_scheduling(void) {
     TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
 
-void test_scheduling_procq_capacity(void) {
+void test_scheduling_taskq_capacity(void) {
     struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
@@ -91,7 +91,7 @@ void test_scheduling_procq_capacity(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -100,20 +100,20 @@ void test_scheduling_procq_capacity(void) {
 
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
-    for(unsigned i = 0u; i < thrdpool_procq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
     }
 
     /* Task queue full at this point */
-    TEST_ASSERT_FALSE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_FALSE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
 
     /* Wait for worker to finish */
-    while(args.value < thrdpool_procq_capacity(&pool) + 1u) {
+    while(args.value < thrdpool_taskq_capacity(&pool) + 1u) {
         pthread_cond_wait(&cv, &lock);
     }
 
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
-    TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_procq_capacity(&pool) + 1u));
+    TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_taskq_capacity(&pool) + 1u));
 
     pthread_mutex_unlock(&lock);
 
@@ -127,12 +127,12 @@ void test_scheduling_20_workers(void) {
     thrdpool_decl(pool, 20u);
     TEST_ASSERT_TRUE(thrdpool_init(&pool));
 
-    unsigned max_enq = thrdpool_size(&pool) + thrdpool_procq_capacity(&pool);
+    unsigned max_enq = thrdpool_size(&pool) + thrdpool_taskq_capacity(&pool);
 
     pthread_mutex_lock(&lock);
 
     for(unsigned i = 0u; i < max_enq; i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_inc, .args = &value }));
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
     }
 
     while(value < max_enq) {
@@ -152,12 +152,12 @@ void test_scheduling_128_workers(void) {
     thrdpool_decl(pool, 20u);
     TEST_ASSERT_TRUE(thrdpool_init(&pool));
 
-    unsigned max_enq = thrdpool_size(&pool) + thrdpool_procq_capacity(&pool);
+    unsigned max_enq = thrdpool_size(&pool) + thrdpool_taskq_capacity(&pool);
 
     pthread_mutex_lock(&lock);
 
     for(unsigned i = 0u; i < max_enq; i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_inc, .args = &value }));
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
     }
 
     while(value < max_enq) {
@@ -185,7 +185,7 @@ void test_scheduled_tasks(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -194,20 +194,20 @@ void test_scheduled_tasks(void) {
 
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
-    for(unsigned i = 0u; i < thrdpool_procq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
         TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), i + 1u);
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_procq_capacity(&pool));
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_taskq_capacity(&pool));
 
     /* Wait for worker to finish */
-    while(args.value < thrdpool_procq_capacity(&pool) + 1u) {
+    while(args.value < thrdpool_taskq_capacity(&pool) + 1u) {
         pthread_cond_wait(&cv, &lock);
     }
 
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
-    TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_procq_capacity(&pool) + 1u));
+    TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_taskq_capacity(&pool) + 1u));
 
     pthread_mutex_unlock(&lock);
 
@@ -229,7 +229,7 @@ void test_schedule_flushing(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -238,11 +238,11 @@ void test_schedule_flushing(void) {
 
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
-    for(unsigned i = 0u; i < thrdpool_procq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_procq_capacity(&pool));
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_taskq_capacity(&pool));
 
     thrdpool_flush(&pool);
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);

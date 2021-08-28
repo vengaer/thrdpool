@@ -1,8 +1,8 @@
 #ifndef THRDPOOL_H
 #define THRDPOOL_H
 
-#include "proc.h"
-#include "procq.h"
+#include "task.h"
+#include "taskq.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -14,7 +14,7 @@ struct thrdpool {
     size_t size;
     pthread_cond_t cv;
     pthread_mutex_t lock;
-    struct thrdpool_procq q;
+    struct thrdpool_taskq q;
     pthread_t workers[];
 };
 
@@ -45,17 +45,17 @@ struct thrdpool {
 #define thrdpool_flush(u)                           \
     thrdpool_flush_impl(&(u)->d_pool)
 
-#define thrdpool_procq_capacity(u)                  \
-    thrdpool_arrsize((u)->d_pool.q.procs)
+#define thrdpool_taskq_capacity(u)                  \
+    thrdpool_arrsize((u)->d_pool.q.tasks)
 
 bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity);
 
-bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc);
+bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_task const *restrict task);
 
 inline size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool) {
     size_t ntasks;
     pthread_mutex_lock(&pool->lock);
-    ntasks = thrdpool_procq_size(&pool->q);
+    ntasks = thrdpool_taskq_size(&pool->q);
     pthread_mutex_unlock(&pool->lock);
     return ntasks;
 }
@@ -67,7 +67,7 @@ inline bool thrdpool_destroy_impl(struct thrdpool *pool) {
 
 inline void thrdpool_flush_impl(struct thrdpool *pool) {
     pthread_mutex_lock(&pool->lock);
-    thrdpool_procq_clear(&pool->q);
+    thrdpool_taskq_clear(&pool->q);
     pthread_mutex_unlock(&pool->lock);
 }
 

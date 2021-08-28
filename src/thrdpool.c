@@ -11,31 +11,31 @@ void thrdpool_flush_impl(struct thrdpool *pool);
 static void *thrdpool_wait(void *p) {
     struct thrdpool *pool = p;
 
-    struct thrdpool_proc proc;
-    bool has_proc = false;
+    struct thrdpool_task task;
+    bool has_task = false;
     bool join = false;
 
     while(!join) {
-        has_proc = false;
+        has_task = false;
         pthread_mutex_lock(&pool->lock);
 
         /* Avoid spurious wakeups */
-        while(!pool->join && !thrdpool_procq_size(&pool->q)) {
+        while(!pool->join && !thrdpool_taskq_size(&pool->q)) {
             pthread_cond_wait(&pool->cv, &pool->lock);
         }
 
         join = pool->join;
         if(!join) {
-            /* Copy first proc to stack */
-            proc = *thrdpool_procq_front(&pool->q);
-            thrdpool_procq_pop_front(&pool->q);
-            has_proc = true;
+            /* Copy first task to stack */
+            task = *thrdpool_taskq_front(&pool->q);
+            thrdpool_taskq_pop_front(&pool->q);
+            has_task = true;
         }
 
         pthread_mutex_unlock(&pool->lock);
 
-        if(has_proc) {
-            thrdpool_call(&proc);
+        if(has_task) {
+            thrdpool_call(&task);
         }
     }
 
@@ -90,7 +90,7 @@ bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
     }
 
     pool->join = false;
-    pool->q = thrdpool_procq_init();
+    pool->q = thrdpool_taskq_init();
     pool->size = capacity;
 
     err = pthread_cond_init(&pool->cv, 0);
@@ -122,11 +122,11 @@ epilogue:
     return success;
 }
 
-bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc) {
+bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_task const *restrict task) {
     bool success;
 
     pthread_mutex_lock(&pool->lock);
-    success = thrdpool_procq_push(&pool->q, proc);
+    success = thrdpool_taskq_push(&pool->q, task);
     pthread_mutex_unlock(&pool->lock);
 
     if(success) {
