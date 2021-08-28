@@ -28,7 +28,7 @@ pipeline {
                 script {
                     ccs.each { cc ->
                         echo "-- Stating ${cc} Build --"
-                        sh "CC=${cc} make -B"
+                        sh "CC=${cc} make -B -j\$(nproc)"
                     }
                 }
             }
@@ -44,11 +44,11 @@ pipeline {
                     ccs.each { cc ->
                         stage("Test ${cc}") {
                             echo "Running ${cc} Test 1/1000"
-                            sh "CC=${cc} make check -B"
+                            sh "CC=${cc} make check -B -j\$(nproc)"
 
                             for(int i = 0; i < 999; i++) {
                                 echo "Running ${cc} Test ${i + 2}/1000"
-                                sh "CC=${cc} make check"
+                                sh "CC=${cc} make check -j\$(nproc)"
                             }
                         }
                     }
