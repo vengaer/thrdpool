@@ -3,6 +3,7 @@
 void thrdpool_procq_pop_front(struct thrdpool_procq *q);
 void thrdpool_procq_pop_back(struct thrdpool_procq *q);
 size_t thrdpool_procq_size(struct thrdpool_procq const *q);
+void thrdpool_procq_clear(struct thrdpool_procq *q);
 
 bool thrdpool_procq_push(struct thrdpool_procq *restrict q, struct thrdpool_proc const *restrict handle) {
     if(q->size == thrdpool_arrsize(q->procs)) {
@@ -10,6 +11,7 @@ bool thrdpool_procq_push(struct thrdpool_procq *restrict q, struct thrdpool_proc
     }
     q->procs[thrdpool_mod_size(q->start + q->size)] = *handle;
     ++q->size;
+    assert(q->size <= thrdpool_arrsize(q->procs));
     return true;
 }
 
@@ -17,5 +19,6 @@ struct thrdpool_proc *thrdpool_procq_front(struct thrdpool_procq *q) {
     if(!q->size) {
         return 0;
     }
+    assert(q->start < thrdpool_arrsize(q->procs));
     return &q->procs[q->start];
 }

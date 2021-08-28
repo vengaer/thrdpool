@@ -3,6 +3,7 @@
 
 #include "proc.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -34,17 +35,23 @@ bool thrdpool_procq_push(struct thrdpool_procq *restrict q, struct thrdpool_proc
 struct thrdpool_proc *thrdpool_procq_front(struct thrdpool_procq *q);
 
 inline void thrdpool_procq_pop_front(struct thrdpool_procq *q) {
+    assert(q->size);
     --q->size;
-    q->start = thrdpool_mod_size((q->start + 1u));
+    q->start = thrdpool_mod_size(q->start + 1u);
 }
 
 inline void thrdpool_procq_pop_back(struct thrdpool_procq *q) {
+    assert(q->size);
     --q->size;
 }
 
 
 inline size_t thrdpool_procq_size(struct thrdpool_procq const *q) {
     return q->size;
+}
+
+inline void thrdpool_procq_clear(struct thrdpool_procq *q) {
+    q->size = 0u;
 }
 
 #endif /* PROCQ_H */
