@@ -33,7 +33,7 @@ pipeline {
                 }
             }
         }
-        stage('Test') {
+        stage('Dynamic Test') {
             agent {
                 docker {
                     image "${DOCKER_IMAGE}"
@@ -42,8 +42,15 @@ pipeline {
             steps {
                 script {
                     ccs.each { cc ->
-                        echo "-- Running ${cc} Test --"
-                        sh "CC=${cc} make check -B"
+                        stage("Test ${cc}") {
+                            echo "Running ${cc} Test 1/1000"
+                            sh "CC=${cc} make check -B"
+
+                            for(int i = 0; i < 999; i++) {
+                                echo "Running ${cc} Test ${i + 2}/1000"
+                                sh "CC=${cc} make check"
+                            }
+                        }
                     }
                 }
             }
