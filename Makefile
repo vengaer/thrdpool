@@ -31,7 +31,7 @@ RUBY         := ruby
 CMAKE        := cmake
 
 CFLAGS       := -Wall -Wextra -Wpedantic -std=c99 -g -fPIC -MD -MP -c -pthread
-CPPFLAGS     := -I$(root) -I$(unitydir)/src -D_POSIX_C_SOURCE=200112l
+CPPFLAGS     := -I$(root) -I$(unitydir)/src
 LDFLAGS      := -L$(unitydir) -L$(root)
 LDLIBS       := -pthread
 ARFLAGS      := -rc
