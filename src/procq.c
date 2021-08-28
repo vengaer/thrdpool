@@ -12,7 +12,7 @@ bool thrdpool_procq_push(struct thrdpool_procq *restrict q, struct thrdpool_proc
     return true;
 }
 
-struct thrdpool_proc *thrdpool_procq_top(struct thrdpool_procq *q) {
+struct thrdpool_proc *thrdpool_procq_front(struct thrdpool_procq *q) {
     if(!q->size) {
         return 0;
     }

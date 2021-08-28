@@ -31,7 +31,7 @@ struct thrdpool_procq {
 #define thrdpool_procq_init() (struct thrdpool_procq) { .start = 0u, .size = 0u }
 
 bool thrdpool_procq_push(struct thrdpool_procq *restrict q, struct thrdpool_proc const *restrict handle);
-struct thrdpool_proc *thrdpool_procq_top(struct thrdpool_procq *q);
+struct thrdpool_proc *thrdpool_procq_front(struct thrdpool_procq *q);
 
 inline void thrdpool_procq_pop(struct thrdpool_procq *q) {
     --q->size;
