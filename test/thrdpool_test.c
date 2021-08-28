@@ -50,14 +50,14 @@ void test_thrdpool_size(void) {
         thrdpool_decl(pool, 1u);
         TEST_ASSERT_EQUAL_UINT32((unsigned)sizeof(pool), sizeof(struct thrdpool) + sizeof(pthread_t));
         TEST_ASSERT_TRUE(thrdpool_init(&pool));
-        TEST_ASSERT_EQUAL_UINT32((unsigned)pool.d_pool.size, 1u);
+        TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_size(&pool), 1u);
         TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
     }
     {
         thrdpool_decl(pool, 8u);
         TEST_ASSERT_EQUAL_UINT32((unsigned)sizeof(pool), sizeof(struct thrdpool) + 8u * sizeof(pthread_t));
         TEST_ASSERT_TRUE(thrdpool_init(&pool));
-        TEST_ASSERT_EQUAL_UINT32((unsigned)pool.d_pool.size, 8u);
+        TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_size(&pool), 8u);
         TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
     }
 }
@@ -214,5 +214,4 @@ void test_scheduled_tasks(void) {
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
     TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
-
 }
