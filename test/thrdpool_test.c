@@ -62,7 +62,7 @@ void test_thrdpool_size(void) {
     }
 }
 
-void test_thrdpool_basic_scheduling(void) {
+void test_basic_scheduling(void) {
     unsigned value = 0u;
     thrdpool_decl(pool, 1u);
     TEST_ASSERT_TRUE(thrdpool_init(&pool));
@@ -79,7 +79,7 @@ void test_thrdpool_basic_scheduling(void) {
 }
 
 void test_scheduling_procq_capacity(void) {
-    static struct signalargs args;
+    struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_init(&args.cv, 0), 0);
@@ -119,5 +119,55 @@ void test_scheduling_procq_capacity(void) {
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
+}
+
+void test_scheduling_20_workers(void) {
+    unsigned value = 0u;
+    thrdpool_decl(pool, 20u);
+    TEST_ASSERT_TRUE(thrdpool_init(&pool));
+
+    unsigned max_enq = thrdpool_size(&pool) + thrdpool_procq_capacity(&pool);
+
+    pthread_mutex_lock(&lock);
+
+    for(unsigned i = 0u; i < max_enq; i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_inc, .args = &value }));
+    }
+
+    while(value < max_enq) {
+        pthread_cond_wait(&cv, &lock);
+    }
+
+    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_scheduled_tasks(&pool));
+    TEST_ASSERT_EQUAL_UINT32(max_enq, value);
+
+    pthread_mutex_unlock(&lock);
+
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
+}
+
+void test_scheduling_128_workers(void) {
+    unsigned value = 0u;
+    thrdpool_decl(pool, 20u);
+    TEST_ASSERT_TRUE(thrdpool_init(&pool));
+
+    unsigned max_enq = thrdpool_size(&pool) + thrdpool_procq_capacity(&pool);
+
+    pthread_mutex_lock(&lock);
+
+    for(unsigned i = 0u; i < max_enq; i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_inc, .args = &value }));
+    }
+
+    while(value < max_enq) {
+        pthread_cond_wait(&cv, &lock);
+    }
+
+    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_scheduled_tasks(&pool));
+    TEST_ASSERT_EQUAL_UINT32(max_enq, value);
+
+    pthread_mutex_unlock(&lock);
+
     TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
