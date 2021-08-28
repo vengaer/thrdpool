@@ -25,7 +25,7 @@ void test_procq_size(void) {
     TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = inc }));
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_procq_size(&q), 2u);
 
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_procq_size(&q), 1u);
 }
 
@@ -45,17 +45,17 @@ void test_procq_call_extracted(void) {
     proc = thrdpool_procq_front(&q);
     thrdpool_call(proc);
     TEST_ASSERT_EQUAL_UINT32(value, gval);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
 
     proc = thrdpool_procq_front(&q);
     thrdpool_call(proc);
     TEST_ASSERT_EQUAL_UINT32(value, gval);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
 
     proc = thrdpool_procq_front(&q);
     thrdpool_call(proc);
     TEST_ASSERT_EQUAL_UINT32(value, 0);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
 }
 
 void test_procq_wrap(void) {
@@ -67,8 +67,8 @@ void test_procq_wrap(void) {
         TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = inc, .args = &value }));
     }
     TEST_ASSERT_FALSE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = zero, .args = &value }));
-    thrdpool_procq_pop(&q);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
+    thrdpool_procq_pop_front(&q);
 
     TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = zero, .args = &value }));
     TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = inc, .args = &value }));
@@ -79,15 +79,15 @@ void test_procq_wrap(void) {
         proc = thrdpool_procq_front(&q);
         thrdpool_call(proc);
         TEST_ASSERT_EQUAL_UINT32(value, gval);
-        thrdpool_procq_pop(&q);
+        thrdpool_procq_pop_front(&q);
     }
     proc = thrdpool_procq_front(&q);
     thrdpool_call(proc);
     TEST_ASSERT_EQUAL_UINT32(value, 0u);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
 
     proc = thrdpool_procq_front(&q);
     thrdpool_call(proc);
     TEST_ASSERT_EQUAL_UINT32(value, gval);
-    thrdpool_procq_pop(&q);
+    thrdpool_procq_pop_front(&q);
 }
