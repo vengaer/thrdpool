@@ -123,4 +123,8 @@ $(gendir):
 clean:
 	$(QUIET)$(RM) $(RMFLAGS) $(builddir) $(solib) $(solib).$(sover) $(archive)
 
+.PHONY: distclean
+distclean: clean
+	$(QUIET)$(MAKE) -sC $(unitydir) clean
+
 -include $(obj:$(oext):.$(dext))
