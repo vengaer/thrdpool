@@ -101,13 +101,14 @@ $(unityarchive):
 $(call gen-test-link-rules)
 
 .PHONY: test
-test:
+test: CFLAGS    += -fsanitize=thread,undefined -g
+test: CPPFLAGS  := $(filter-out -DNDEBUG,$(CPPFLAGS))
+test: LDFLAGS   += -fsanitize=thread,undefined
 
 .PHONY: check
 check: CFLAGS   += -fsanitize=thread,undefined -g
 check: CPPFLAGS := $(filter-out -DNDEBUG,$(CPPFLAGS))
 check: LDFLAGS  += -fsanitize=thread,undefined
-check:
 
 $(builddir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
