@@ -117,9 +117,9 @@ void test_scheduling_taskq_capacity(void) {
 
     pthread_mutex_unlock(&lock);
 
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
-    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
 
 void test_scheduling_20_workers(void) {
@@ -211,9 +211,10 @@ void test_scheduled_tasks(void) {
 
     pthread_mutex_unlock(&lock);
 
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
+
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
-    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
 
 void test_schedule_flushing(void) {
@@ -255,7 +256,8 @@ void test_schedule_flushing(void) {
 
     pthread_mutex_unlock(&lock);
 
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
+
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
-    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
