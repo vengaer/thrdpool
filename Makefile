@@ -10,7 +10,6 @@ archive      := $(libname).$(aext)
 solib        := $(libname).$(soext)
 sover        := 0
 socompat     := 0
-test         := thrdpooltest
 
 root         := $(abspath $(CURDIR))
 srcdir       := $(root)/src
@@ -47,8 +46,24 @@ RMFLAGS      := -rf
 QUIET        := @
 
 obj          := $(patsubst $(srcdir)/%.$(cext),$(builddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
-testobj      := $(patsubst $(testdir)/%.$(cext),$(testbuilddir)/%.$(oext),$(wildcard $(testdir)/*.$(cext))) \
-                $(patsubst $(testdir)/%.$(cext),$(testbuilddir)/%$(runsuffix).$(oext),$(wildcard $(testdir)/*.$(cext)))
+testobj      := $(patsubst $(testdir)/%.$(cext),$(testbuilddir)/%.$(oext),$(wildcard $(testdir)/*.$(cext)))
+
+
+define gen-test-link-rules
+$(strip
+    $(foreach __o,$(testobj),
+        $(eval
+            $(eval __bin := $(builddir)/$(basename $(notdir $(__o))))
+            $(__bin): $(__o) $(patsubst %.$(oext),%_runner.$(oext),$(__o)) $(archive) $(unityarchive) | $(builddir)
+	            $$(info [LD] $$@)
+	            $(QUIET)$(CC) -o $$@ $$^ $(LDFLAGS) $(LDLIBS)
+
+            check_$(notdir $(__bin)): $(__bin)
+	            $(QUIET)$$^
+
+            test: $(__bin)
+            check: check_$(notdir $(__bin)))))
+endef
 
 .PHONY: all
 all: $(archive) $(solib)
@@ -85,16 +100,13 @@ $(unityarchive):
 	$(QUIET)$(CMAKE) $(unitydir)
 	$(QIUET)$(MAKE) -C $(unitydir)
 
-$(test): $(testobj) $(archive) $(unityarchive)
-	$(info [LD] $@)
-	$(QUIET)$(CC) -o $@ $(testobj) $(LDFLAGS) $(LDLIBS) $(test_LDLIBS)
+$(call gen-test-link-rules)
 
 .PHONY: test
-test: $(test)
+test:
 
 .PHONY: check
-check: $(test)
-	$(QUIET)./$^
+check:
 
 $(builddir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
@@ -107,6 +119,6 @@ $(gendir):
 
 .PHONY: clean
 clean:
-	$(QUIET)$(RM) $(RMFLAGS) $(builddir) $(solib) $(solib).$(sover) $(test) $(archive)
+	$(QUIET)$(RM) $(RMFLAGS) $(builddir) $(solib) $(solib).$(sover) $(archive)
 
 -include $(obj:$(oext):.$(dext))
