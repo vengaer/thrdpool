@@ -21,15 +21,51 @@ struct thrdpool {
 #define thrdpool_bytesize(capacity) \
     (sizeof(struct thrdpool) + capacity * sizeof(((struct thrdpool *)0)->workers[0]))
 
-#define thrdpool_init(capacity)     \
-    thrdpool_init_impl(&(union { unsigned char _[thrdpool_bytesize(capacity)]; struct thrdpool pool; }){ 0 }.pool, capacity)
+#define thrdpool_decl(name, cap)                        \
+    static union {                                      \
+        unsigned char d_bytes[thrdpool_bytesize(cap)];  \
+        struct thrdpool d_pool;                         \
+    } name;
 
-struct thrdpool *thrdpool_init_impl(struct thrdpool *pool, size_t capacity);
-bool thrdpool_schedule(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc);
+#define thrdpool_init(u)                            \
+    thrdpool_init_impl(&(u)->d_pool, (sizeof(*u) - sizeof((u)->d_pool)) / sizeof(pthread_t))
 
-inline bool thrdpool_destroy(struct thrdpool *pool) {
+#define thrdpool_schedule(u, ...)                   \
+    thrdpool_schedule_impl(&(u)->d_pool, __VA_ARGS__)
+
+#define thrdpool_scheduled_tasks(u)                 \
+    thrdpool_scheduled_tasks_impl(&(u)->d_pool)
+
+#define thrdpool_destroy(u)                         \
+    thrdpool_destroy_impl(&(u)->d_pool)
+
+#define thrdpool_flush(u)                           \
+    thrdpool_flush_impl(&(u)->d_pool)
+
+#define thrdpool_procq_capacity(u)                  \
+    thrdpool_arrsize((u)->d_pool.q.procs)
+
+bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity);
+
+bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc);
+
+inline size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool) {
+    size_t ntasks;
+    pthread_mutex_lock(&pool->lock);
+    ntasks = thrdpool_procq_size(&pool->q);
+    pthread_mutex_unlock(&pool->lock);
+    return ntasks;
+}
+
+inline bool thrdpool_destroy_impl(struct thrdpool *pool) {
     extern bool thrdpool_destroy_internal(struct thrdpool *pool, size_t size);
     return thrdpool_destroy_internal(pool, pool->size);
+}
+
+inline void thrdpool_flush_impl(struct thrdpool *pool) {
+    pthread_mutex_lock(&pool->lock);
+    thrdpool_procq_clear(&pool->q);
+    pthread_mutex_unlock(&pool->lock);
 }
 
 #endif /* THRDPOOL_H */

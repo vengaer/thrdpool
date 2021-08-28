@@ -4,21 +4,12 @@
 #include <stdio.h>
 #include <string.h>
 
-struct thrdargs {
-    bool *join;
-    pthread_cond_t *cv;
-    pthread_mutex_t *lock;
-    struct thrdpool_procq *q;
-    pthread_barrier_t *argbarrier;
-};
-
-bool thrdpool_destroy(struct thrdpool *pool);
+size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool);
+bool thrdpool_destroy_impl(struct thrdpool *pool);
+void thrdpool_flush_impl(struct thrdpool *pool);
 
 static void *thrdpool_wait(void *p) {
-    /* Copy args to stack */
-    struct thrdargs args = *(struct thrdargs *)p;
-    /* Release main thread */
-    pthread_barrier_wait(args.argbarrier);
+    struct thrdpool *pool = p;
 
     struct thrdpool_proc proc;
     bool has_proc = false;
@@ -26,22 +17,22 @@ static void *thrdpool_wait(void *p) {
 
     while(!join) {
         has_proc = false;
-        pthread_mutex_lock(args.lock);
+        pthread_mutex_lock(&pool->lock);
 
         /* Avoid spurious wakeups */
-        while(!*args.join && !thrdpool_procq_size(args.q)) {
-            pthread_cond_wait(args.cv, args.lock);
+        while(!pool->join && !thrdpool_procq_size(&pool->q)) {
+            pthread_cond_wait(&pool->cv, &pool->lock);
         }
 
-        join = *args.join;
+        join = pool->join;
         if(!join) {
             /* Copy first proc to stack */
-            proc = *thrdpool_procq_front(args.q);
-            thrdpool_procq_pop_front(args.q);
+            proc = *thrdpool_procq_front(&pool->q);
+            thrdpool_procq_pop_front(&pool->q);
             has_proc = true;
         }
 
-        pthread_mutex_unlock(args.lock);
+        pthread_mutex_unlock(&pool->lock);
 
         if(has_proc) {
             thrdpool_call(&proc);
@@ -88,12 +79,14 @@ bool thrdpool_destroy_internal(struct thrdpool *pool, size_t nthreads) {
     return success;
 }
 
-struct thrdpool *thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
+bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
     int err;
-    size_t nthreads;
-    pthread_barrier_t argbarrier;
+    size_t nthreads = 0u;
+    bool success = false;
 
-    struct thrdpool *outp = 0;
+    if(!capacity) {
+        return false;
+    }
 
     pool->join = false;
     pool->q = thrdpool_procq_init();
@@ -102,53 +95,33 @@ struct thrdpool *thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
     err = pthread_cond_init(&pool->cv, 0);
     if(err) {
         fprintf(stderr, "Error intializing condition variable: %s\n", strerror(errno));
-        return 0;
+        return false;
     }
 
     err = pthread_mutex_init(&pool->lock, 0);
     if(err) {
         fprintf(stderr, "Error initializing mutex: %s\n", strerror(errno));
         pthread_cond_destroy(&pool->cv);
-        return 0;
-    }
-
-    err = pthread_barrier_init(&argbarrier, 0, 2u);
-    if(err) {
-        fprintf(stderr, "Error initializing barrier: %s\n", strerror(errno));
-        goto epilogue;
+        return false;
     }
 
     for(; nthreads < pool->size; nthreads++) {
-        struct thrdargs args = {
-            .join = &pool->join,
-            .cv = &pool->cv,
-            .lock = &pool->lock,
-            .q = &pool->q,
-            .argbarrier = &argbarrier
-        };
-        err = pthread_create(&pool->workers[nthreads], 0, thrdpool_wait, &args);
+        err = pthread_create(&pool->workers[nthreads], 0, thrdpool_wait, pool);
         if(err) {
             fprintf(stderr, "Error forking thread %zu: %s\n", nthreads, strerror(errno));
             goto epilogue;
         }
-
-        /* Wait for forked thread to copy args to its stack */
-        pthread_barrier_wait(&argbarrier);
     }
 
-    outp = pool;
+    success = true;
 epilogue:
-    if(!outp) {
+    if(!success) {
         thrdpool_destroy_internal(pool, nthreads);
     }
-    err = pthread_barrier_destroy(&argbarrier);
-    if(err) {
-        fprintf(stderr, "Error destroying barrier: %s\n", strerror(errno));
-    }
-    return outp;
+    return success;
 }
 
-bool thrdpool_schedule(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc) {
+bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_proc const *restrict proc) {
     bool success = true;
 
     pthread_mutex_lock(&pool->lock);
