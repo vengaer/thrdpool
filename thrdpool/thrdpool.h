@@ -25,7 +25,7 @@ struct thrdpool {
     static union {                                      \
         unsigned char d_bytes[thrdpool_bytesize(cap)];  \
         struct thrdpool d_pool;                         \
-    } name;
+    } name
 
 #define thrdpool_init(u)                            \
     thrdpool_init_impl(&(u)->d_pool, (sizeof(*u) - sizeof((u)->d_pool)) / sizeof(pthread_t))
