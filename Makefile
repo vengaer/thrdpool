@@ -128,4 +128,4 @@ clean:
 distclean: clean
 	$(QUIET)$(MAKE) -sC $(unitydir) clean
 
--include $(obj:$(oext):.$(dext))
+-include $(patsubst %.$(oext),%.$(dext),$(obj) $(testobj))
