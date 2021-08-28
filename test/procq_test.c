@@ -91,3 +91,19 @@ void test_procq_wrap(void) {
     TEST_ASSERT_EQUAL_UINT32(value, gval);
     thrdpool_procq_pop_front(&q);
 }
+
+void test_procq_pop_back(void) {
+    unsigned value = 0u;
+
+    struct thrdpool_procq q = thrdpool_procq_init();
+
+    TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = inc, .args = &value }));
+    TEST_ASSERT_TRUE(thrdpool_procq_push(&q, &(struct thrdpool_proc) { .handle = zero, .args = &value }));
+
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_procq_size(&q), 2u);
+    thrdpool_procq_pop_back(&q);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_procq_size(&q), 1u);
+    struct thrdpool_proc *proc = thrdpool_procq_front(&q);
+    thrdpool_call(proc);
+    TEST_ASSERT_EQUAL_UINT32(value, gval);
+}
