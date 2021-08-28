@@ -42,7 +42,7 @@ pipeline {
             steps {
                 script {
                     ccs.each { cc ->
-                        echo "-- Stating ${cc} Build --"
+                        echo "-- Running ${cc} Test --"
                         sh "CC=${cc} make check -B"
                     }
                 }
