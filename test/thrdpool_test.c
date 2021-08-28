@@ -215,3 +215,47 @@ void test_scheduled_tasks(void) {
     TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
     TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
+
+void test_schedule_flushing(void) {
+    struct signalargs args;
+
+    TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
+    TEST_ASSERT_EQUAL_INT32(pthread_cond_init(&args.cv, 0), 0);
+
+    thrdpool_decl(pool, 1u);
+    TEST_ASSERT_TRUE(thrdpool_init(&pool));
+
+    pthread_mutex_lock(&lock);
+
+    /* Schedule first task */
+    pthread_mutex_lock(&args.lock);
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+
+    /* Wait for worker to grab job from pool */
+    pthread_cond_wait(&args.cv, &args.lock);
+    /* Done with setup lock */
+    pthread_mutex_unlock(&args.lock);
+
+    /* Schedule enough jobs to fill up the queue while still holding
+     * global lock */
+    for(unsigned i = 0u; i < thrdpool_procq_capacity(&pool); i++) {
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_proc) { .handle = task_signal, .args = &args }));
+    }
+
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_procq_capacity(&pool));
+
+    thrdpool_flush(&pool);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+
+    /* Wait for worker to finish */
+    pthread_cond_wait(&cv, &lock);
+
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+    TEST_ASSERT_EQUAL_UINT32(1u, args.value);
+
+    pthread_mutex_unlock(&lock);
+
+    TEST_ASSERT_EQUAL_INT32(pthread_mutex_destroy(&args.lock), 0);
+    TEST_ASSERT_EQUAL_INT32(pthread_cond_destroy(&args.cv), 0);
+    TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
+}
