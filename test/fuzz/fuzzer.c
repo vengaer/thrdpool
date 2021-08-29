@@ -31,11 +31,15 @@ int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size) {
         abort();
     }
 
+    sem_wait(&shmb->sem);
+
     shmb->size = size;
     memcpy(&shmb->data, data, size);
 
-    kill(getppid(), SIGUSR1);
-    sem_wait(&shmb->sem);
+    if(sem_post(&shmb->sem) == -1) {
+        perror("sem_post");
+        abort();
+    }
 
     munmap(shmb, sizeof(*shmb));
 

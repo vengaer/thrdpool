@@ -2,6 +2,7 @@
 
 #include <thrdpool/thrdpool.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -22,35 +23,6 @@ static pthread_mutex_t lock;
 static pthread_cond_t cv;
 static unsigned processed;
 static unsigned parsum;
-
-static sig_atomic_t volatile child_alive = 1;
-
-void sighandler(int signal) {
-    switch(signal) {
-        case SIGCHLD:
-            child_alive = 0;
-            break;
-        default:
-            /* nop */
-            break;
-    }
-}
-
-static bool set_sighandler(void) {
-    bool success = true;
-    struct sigaction sa = { 0 };
-    sa.sa_handler = sighandler;
-    sigemptyset(&sa.sa_mask);
-    if(sigaction(SIGCHLD, &sa, 0)) {
-        perror("sigaction SIGCHLD");
-        success = false;
-    }
-    if(sigaction(SIGUSR1, &sa, 0)) {
-        perror("sigaction SIGUSR1");
-        success = false;
-    }
-    return success;
-}
 
 void accumulate(void *p) {
     pthread_mutex_lock(&lock);
@@ -94,10 +66,6 @@ bool process(struct shmbuf *shmb) {
     }
     pthread_mutex_unlock(&lock);
 
-    if(sem_post(&shmb->sem) == -1) {
-        perror("sem_post");
-        return false;
-    }
     return success;
 }
 
@@ -148,10 +116,6 @@ int main(int argc, char **argv) {
     }
     sem_inited = true;
 
-    if(!set_sighandler()) {
-        goto epilogue;
-    }
-
     childpid = fork();
     switch(childpid) {
         case -1:
@@ -174,28 +138,33 @@ int main(int argc, char **argv) {
     }
     thrdpool_inited = true;
 
-    while(child_alive) {
-        err = waitpid(childpid, &childstatus, 0);
-        if(err != -1) {
-            break;
-        }
-        /* Interrupted by signal ? */
-        switch(errno) {
-            case ECHILD:
-                child_alive = 0;
-                break;
-            case EINTR:
-                if(!process(shmb)) {
-                    goto epilogue;
-                }
-                break;
-            default:
+    while(childpid) {
+        err = waitpid(childpid, &childstatus, WNOHANG);
+        switch(err) {
+            case -1:
                 perror("waitpid");
                 goto epilogue;
+            case 0:
+                /* nop */
+                break;
+            default:
+                childpid = 0;
+                break;
+         }
+
+        if(childpid) {
+            sem_wait(&shmb->sem);
+            err = !process(shmb);
+            if(sem_post(&shmb->sem) == -1) {
+                perror("sem_post");
+                goto epilogue;
+            }
+            if(err) {
+                goto epilogue;
+            }
         }
     }
 
-    childpid = 0;
     status = WIFEXITED(childstatus) ? WEXITSTATUS(childstatus) : 1;
 epilogue:
     if(childpid) {
