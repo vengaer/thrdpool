@@ -21,14 +21,14 @@ int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size) {
     int fd = shm_open(SHMPATH, O_RDWR, S_IRUSR | S_IWUSR);
     if(fd == -1) {
         perror("shm_open");
-        exit(1);
+        abort();
     }
 
     struct shmbuf *shmb = mmap(0, sizeof(*shmb), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     close(fd);
     if(shmb == MAP_FAILED) {
         perror("mmap");
-        exit(1);
+        abort();
     }
 
     sem_wait(&shmb->sem);
@@ -38,7 +38,7 @@ int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size) {
 
     if(sem_post(&shmb->sem) == -1) {
         perror("sem_post");
-        exit(1);
+        abort();
     }
 
     munmap(shmb, sizeof(*shmb));

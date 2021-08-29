@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
          }
     }
 
-    status = WIFEXITED(childstatus) ? WEXITSTATUS(childstatus) : 1;
+    status = 0;
 epilogue:
     if(child_alive) {
         kill(childpid, SIGTERM);
