@@ -43,12 +43,14 @@ pipeline {
                 script {
                     ccs.each { cc ->
                         stage("Test ${cc}") {
-                            echo "Running ${cc} Test 1/1000"
-                            sh "CC=${cc} make check -B -j\$(nproc)"
+                            for(int lvl = 0; lvl < 4; lvl++) {
+                                echo "Running ${cc} O${lvl} Test 1/500"
+                                sh "CC=${cc} make check O=${lvl} -B -j\$(nproc)"
 
-                            for(int i = 0; i < 999; i++) {
-                                echo "Running ${cc} Test ${i + 2}/1000"
-                                sh "CC=${cc} make check -j\$(nproc)"
+                                for(int i = 0; i < 499; i++) {
+                                    echo "Running ${cc} O${lvl} Test ${i + 2}/500"
+                                    sh "CC=${cc} make check O=${lvl} -j\$(nproc)"
+                                }
                             }
                         }
                     }
