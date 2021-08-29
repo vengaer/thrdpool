@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+size_t thrdpool_idle_impl(struct thrdpool *pool);
 size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool);
 bool thrdpool_destroy_impl(struct thrdpool *pool);
 void thrdpool_flush_impl(struct thrdpool *pool);
@@ -18,11 +19,14 @@ static void *thrdpool_wait(void *p) {
     while(!join) {
         has_task = false;
         pthread_mutex_lock(&pool->lock);
+        ++pool->idle;
 
         /* Avoid spurious wakeups */
         while(!pool->join && !thrdpool_taskq_size(&pool->q)) {
             pthread_cond_wait(&pool->cv, &pool->lock);
         }
+
+        --pool->idle;
 
         join = pool->join;
         if(!join) {
@@ -92,6 +96,7 @@ bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
     pool->join = false;
     pool->q = thrdpool_taskq_init();
     pool->size = capacity;
+    pool->idle = 0u;
 
     err = pthread_cond_init(&pool->cv, 0);
     if(err) {

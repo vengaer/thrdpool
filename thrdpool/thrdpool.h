@@ -12,6 +12,7 @@
 struct thrdpool {
     bool join;
     size_t size;
+    size_t idle;
     pthread_cond_t cv;
     pthread_mutex_t lock;
     struct thrdpool_taskq q;
@@ -36,6 +37,9 @@ struct thrdpool {
 #define thrdpool_size(u)                            \
     (u)->d_pool.size
 
+#define thrdpool_idle_workers(u)                    \
+    thrdpool_idle_impl(&(u)->d_pool)
+
 #define thrdpool_scheduled_tasks(u)                 \
     thrdpool_scheduled_tasks_impl(&(u)->d_pool)
 
@@ -51,6 +55,14 @@ struct thrdpool {
 bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity);
 
 bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_task const *restrict task);
+
+inline size_t thrdpool_idle_impl(struct thrdpool *pool) {
+    size_t idle;
+    pthread_mutex_lock(&pool->lock);
+    idle = pool->idle;
+    pthread_mutex_unlock(&pool->lock);
+    return idle;
+}
 
 inline size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool) {
     size_t ntasks;
