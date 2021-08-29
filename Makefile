@@ -14,9 +14,12 @@ socompat     := 0
 root         := $(abspath $(CURDIR))
 srcdir       := $(root)/src
 testdir      := $(root)/test
+unitdir      := $(testdir)/unit
+
 builddir     := $(root)/build
 gendir       := $(builddir)/gen
-testbuilddir := $(builddir)/test
+unitbuilddir := $(builddir)/test
+
 unitydir     := $(root)/unity
 unityarchive := $(unitydir)/libunity.a
 runsuffix    := _runner
@@ -46,7 +49,7 @@ RMFLAGS      := -rf
 QUIET        := @
 
 obj          := $(patsubst $(srcdir)/%.$(cext),$(builddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
-testobj      := $(patsubst $(testdir)/%.$(cext),$(testbuilddir)/%.$(oext),$(wildcard $(testdir)/*.$(cext)))
+testobj      := $(patsubst $(unitdir)/%.$(cext),$(unitbuilddir)/%.$(oext),$(wildcard $(unitdir)/*.$(cext)))
 
 define gen-test-link-rules
 $(strip
@@ -83,15 +86,15 @@ $(builddir)/%.$(oext): $(srcdir)/%.$(cext) | $(builddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(testbuilddir)/%.$(oext): $(testdir)/%.$(cext) $(unityarchive) | $(testbuilddir)
+$(unitbuilddir)/%.$(oext): $(unitdir)/%.$(cext) $(unityarchive) | $(unitbuilddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(testbuilddir)/%.$(oext): $(gendir)/%.$(cext) $(unityarchive) | $(testbuilddir)
+$(unitbuilddir)/%.$(oext): $(gendir)/%.$(cext) $(unityarchive) | $(unitbuilddir)
 	$(info [CC] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-$(gendir)/%$(runsuffix).$(cext): $(testdir)/%.$(cext) $(unityarchive) | $(gendir)
+$(gendir)/%$(runsuffix).$(cext): $(unitdir)/%.$(cext) $(unityarchive) | $(gendir)
 	$(info [RB] $(notdir $@))
 	$(QUIET)$(RUBY) $(rbgen) $< $@
 
@@ -115,7 +118,7 @@ check: LDFLAGS  += -fsanitize=thread,undefined
 $(builddir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
 
-$(testbuilddir):
+$(unitbuilddir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
 
 $(gendir):
