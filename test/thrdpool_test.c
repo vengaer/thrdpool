@@ -79,7 +79,7 @@ void test_basic_scheduling(void) {
 }
 
 void test_scheduling_taskq_capacity(void) {
-    struct signalargs args;
+    static struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_init(&args.cv, 0), 0);
@@ -179,7 +179,7 @@ void test_scheduling_128_workers(void) {
 }
 
 void test_scheduled_tasks(void) {
-    struct signalargs args;
+    static struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_init(&args.cv, 0), 0);
@@ -224,7 +224,7 @@ void test_scheduled_tasks(void) {
 }
 
 void test_schedule_flushing(void) {
-    struct signalargs args;
+    static struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
     TEST_ASSERT_EQUAL_INT32(pthread_cond_init(&args.cv, 0), 0);
