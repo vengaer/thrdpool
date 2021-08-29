@@ -1,6 +1,12 @@
-build/
 libthrdpool*
 thrdpooltest
+
 tags
+
+build/
+
 test/fuzz/corpora/*
 !test/fuzz/corpora/corpus_*
+
+crash-*
+slow-unit-*
