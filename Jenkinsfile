@@ -55,8 +55,8 @@ pipeline {
             steps {
                 script {
                     ccs.each { cc ->
-                        stage("Test ${cc}") {
-                            for(int lvl = 0; lvl < 4; lvl++) {
+                        for(int lvl = 0; lvl < 4; lvl++) {
+                            stage("Test ${cc} O${lvl}") {
                                 echo "Running ${cc} O${lvl} Test 1/500"
                                 sh "CC=${cc} make check O=${lvl} -B -j\$(nproc)"
 
