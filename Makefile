@@ -30,7 +30,8 @@ RM           := rm
 RUBY         := ruby
 CMAKE        := cmake
 
-CFLAGS       := -Wall -Wextra -Wpedantic -std=c99 -g -fPIC -MD -MP -c -pthread
+O            := 1
+CFLAGS       := -Wall -Wextra -Wpedantic -std=c99 -g -fPIC -MD -MP -c -pthread -O$(O)
 CPPFLAGS     := -I$(root) -I$(unitydir)/src -DNDEBUG
 LDFLAGS      := -L$(unitydir) -L$(root)
 LDLIBS       := -pthread
