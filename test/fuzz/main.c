@@ -23,8 +23,17 @@ static pthread_cond_t cv;
 static unsigned processed;
 static unsigned parsum;
 
+static sig_atomic_t volatile child_alive = 1;
+
 void sighandler(int signal) {
-    (void)signal;
+    switch(signal) {
+        case SIGCHLD:
+            child_alive = 0;
+            break;
+        default:
+            /* nop */
+            break;
+    }
 }
 
 static bool set_sighandler(void) {
@@ -64,28 +73,26 @@ bool process(struct shmbuf *shmb) {
     pthread_mutex_lock(&lock);
     parsum = 0u;
     processed = 0u;
+    pthread_mutex_unlock(&lock);
 
     for(unsigned i = 0; i < shmb->size; i++) {
+        seqsum += shmb->data[i];
         while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = accumulate, &shmb->data[i] })) {
             pthread_yield();
         }
     }
 
     /* Wait until all data has been processed */
+    pthread_mutex_lock(&lock);
     while(processed < shmb->size) {
         pthread_cond_wait(&cv, &lock);
-    }
-
-    pthread_mutex_unlock(&lock);
-
-    for(unsigned i = 0; i < shmb->size; i++) {
-        seqsum += shmb->data[i];
     }
 
     if(seqsum != parsum) {
         fprintf(stderr, "Sums do not match, sequential: %u, parallel: %u\n", seqsum, parsum);
         success = false;
     }
+    pthread_mutex_unlock(&lock);
 
     if(sem_post(&shmb->sem) == -1) {
         perror("sem_post");
@@ -145,7 +152,6 @@ int main(int argc, char **argv) {
         goto epilogue;
     }
 
-    puts("Spawning generator");
     childpid = fork();
     switch(childpid) {
         case -1:
@@ -160,26 +166,32 @@ int main(int argc, char **argv) {
             break;
     }
 
+    printf("Forked generator with pid %lld\n", (long long)childpid);
+
     if(!thrdpool_init(&pool)) {
         fputs("thrdpool_init\n", stderr);
         goto epilogue;
     }
     thrdpool_inited = true;
 
-    while(1) {
-        err = wait(&childstatus);
+    while(child_alive) {
+        err = waitpid(childpid, &childstatus, 0);
         if(err != -1) {
             break;
         }
         /* Interrupted by signal ? */
-        if(errno == EINTR) {
-            if(!process(shmb)) {
+        switch(errno) {
+            case ECHILD:
+                child_alive = 0;
+                break;
+            case EINTR:
+                if(!process(shmb)) {
+                    goto epilogue;
+                }
+                break;
+            default:
+                perror("waitpid");
                 goto epilogue;
-            }
-        }
-        else {
-            perror("wait");
-            goto epilogue;
         }
     }
 
