@@ -24,6 +24,39 @@ static pthread_cond_t cv;
 static unsigned processed;
 static unsigned parsum;
 
+static unsigned volatile child_alive = 1;
+static unsigned volatile alive = 1;
+
+void sighandler(int sig) {
+    switch(sig) {
+        case SIGCHLD:
+            child_alive = 0;
+            alive = 0;
+            break;
+        case SIGINT:
+            alive = 0;
+            break;
+        default:
+            /* nop */
+            break;
+    }
+}
+
+bool set_sighandler(void) {
+    struct sigaction sa = { 0 };
+    sa.sa_handler = sighandler;
+    sigemptyset(&sa.sa_mask);
+    if(sigaction(SIGCHLD, &sa, 0) == -1) {
+        perror("sigaction");
+        return false;
+    }
+    if(sigaction(SIGINT, &sa, 0) == -1) {
+        perror("sigaction");
+        return false;
+    }
+    return true;
+}
+
 void accumulate(void *p) {
     pthread_mutex_lock(&lock);
     parsum += *(uint8_t *)p;
@@ -38,7 +71,11 @@ bool process(struct shmbuf *shmb) {
     unsigned seqsum = 0u;
     bool success = true;
 
-    if(!shmb->size) {
+    static uint8_t data[FUZZ_MAXLEN];
+    size_t size = shmb->size;
+    memcpy(data, shmb->data, size);
+
+    if(!size) {
         return true;
     }
 
@@ -47,16 +84,16 @@ bool process(struct shmbuf *shmb) {
     processed = 0u;
     pthread_mutex_unlock(&lock);
 
-    for(unsigned i = 0; i < shmb->size; i++) {
-        seqsum += shmb->data[i];
-        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = accumulate, &shmb->data[i] })) {
+    for(unsigned i = 0; i < size; i++) {
+        seqsum += data[i];
+        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = accumulate, &data[i] })) {
             pthread_yield();
         }
     }
 
     /* Wait until all data has been processed */
     pthread_mutex_lock(&lock);
-    while(processed < shmb->size) {
+    while(processed < size) {
         pthread_cond_wait(&cv, &lock);
     }
 
@@ -116,6 +153,10 @@ int main(int argc, char **argv) {
     }
     sem_inited = true;
 
+    if(!set_sighandler()) {
+        goto epilogue;
+    }
+
     childpid = fork();
     switch(childpid) {
         case -1:
@@ -138,37 +179,34 @@ int main(int argc, char **argv) {
     }
     thrdpool_inited = true;
 
-    while(childpid) {
+    while(alive) {
         err = waitpid(childpid, &childstatus, WNOHANG);
         switch(err) {
             case -1:
                 perror("waitpid");
                 goto epilogue;
             case 0:
-                /* nop */
+                sem_wait(&shmb->sem);
+                err = !process(shmb);
+                if(sem_post(&shmb->sem) == -1) {
+                    perror("sem_post");
+                    goto epilogue;
+                }
+                if(err) {
+                    goto epilogue;
+                }
                 break;
             default:
-                childpid = 0;
+                child_alive = 0;
+                alive = 0;
                 break;
          }
-
-        if(childpid) {
-            sem_wait(&shmb->sem);
-            err = !process(shmb);
-            if(sem_post(&shmb->sem) == -1) {
-                perror("sem_post");
-                goto epilogue;
-            }
-            if(err) {
-                goto epilogue;
-            }
-        }
     }
 
     status = WIFEXITED(childstatus) ? WEXITSTATUS(childstatus) : 1;
 epilogue:
-    if(childpid) {
-        kill(childpid, SIGABRT);
+    if(child_alive) {
+        kill(childpid, SIGTERM);
     }
     if(thrdpool_inited) {
         thrdpool_destroy(&pool);
