@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
         goto epilogue;
     }
 
-    puts("Forking child");
+    puts("Spawning generator");
     childpid = fork();
     switch(childpid) {
         case -1:

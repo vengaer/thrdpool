@@ -2,3 +2,5 @@ build/
 libthrdpool*
 thrdpooltest
 tags
+test/fuzz/corpora/*
+!test/fuzz/corpora/corpus_*
