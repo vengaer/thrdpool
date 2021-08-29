@@ -31,7 +31,7 @@ rbgen        := $(unitydir)/auto/generate_test_runner.rb
 
 fuzzbin      := $(builddir)/fuzzer
 fuzzgen      := $(builddir)/fuzzgen
-
+fuzzmerger   := $(builddir)/fuzzmerger
 
 CC           := gcc
 AR           := ar
@@ -61,6 +61,7 @@ testobj      := $(patsubst $(unitdir)/%.$(cext),$(unitbuilddir)/%.$(oext),$(wild
 fuzzbinobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/main.$(cext)) \
                 $(patsubst $(srcdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
 fuzzgenobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/fuzzer.$(cext))
+fuzzmergeobj := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/merger.$(cext))
 
 define gen-test-link-rules
 $(strip
@@ -78,23 +79,30 @@ $(strip
             check: check_$(notdir $(__bin)))))
 endef
 
+define find-fuzzsrc
+$(strip
+    $(if $(findstring $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(1)),$(wildcard $(srcdir)/*.$(cext))),
+        $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(1)),
+      $(patsubst $(fuzzbuilddir)/%.$(oext),$(fuzzdir)/%.$(cext),$(1))))
+endef
+
 define gen-fuzz-build-rules
 $(strip
     $(foreach __o,$(fuzzbinobj),
         $(eval
-            $(if $(findstring $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(__o)),$(wildcard $(srcdir)/*.$(cext))),
-                $(eval __src := $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(__o))),
-              $(eval __src := $(patsubst $(fuzzbuilddir)/%.$(oext),$(fuzzdir)/%.$(cext),$(__o))))
-            $(__o): $(__src) | $(fuzzbuilddir)
+                $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
 	            $$(info [CC] $$(notdir $$@))
 	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=thread,undefined))
 
     $(foreach __o,$(fuzzgenobj),
         $(eval
-            $(if $(findstring $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(__o)),$(wildcard $(srcdir)/*.$(cext))),
-                $(eval __src := $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(__o))),
-              $(eval __src := $(patsubst $(fuzzbuilddir)/%.$(oext),$(fuzzdir)/%.$(cext),$(__o))))
-            $(__o): $(__src) | $(fuzzbuilddir)
+            $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
+	            $$(info [CC] $$(notdir $$@))
+	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=fuzzer,address,undefined))
+
+    $(foreach __o,$(fuzzmergeobj),
+        $(eval
+            $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
 	            $$(info [CC] $$(notdir $$@))
 	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=fuzzer,address,undefined)))
 endef
@@ -140,39 +148,53 @@ $(call gen-test-link-rules)
 $(call gen-fuzz-build-rules)
 
 $(fuzzbin): $(fuzzbinobj)
-	$(info [LD] $@)
+	$(info [LD] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) -fsanitize=thread,undefined
 
 $(fuzzgen): $(fuzzgenobj)
-	$(info [LD] $@)
+	$(info [LD] $(notdir $@))
+	$(QUIET)$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) -fsanitize=fuzzer,address,undefined
+
+$(fuzzmerger): $(fuzzmergeobj)
+	$(info [LD] $(notdir $@))
 	$(QUIET)$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) -fsanitize=fuzzer,address,undefined
 
 .PHONY: test
-test: CFLAGS       += -fsanitize=thread,undefined -g
-test: CPPFLAGS     := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
-test: LDFLAGS      += -fsanitize=thread,undefined
+test: CFLAGS         += -fsanitize=thread,undefined -g
+test: CPPFLAGS       := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
+test: LDFLAGS        += -fsanitize=thread,undefined
 
 .PHONY: check
-check: CFLAGS      += -fsanitize=thread,undefined -g
-check: CPPFLAGS    := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
-check: LDFLAGS     += -fsanitize=thread,undefined
+check: CFLAGS        += -fsanitize=thread,undefined -g
+check: CPPFLAGS      := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
+check: LDFLAGS       += -fsanitize=thread,undefined
 
 .PHONY: fuzz
-fuzz: CC           := clang
-fuzz: CFLAGS       += -g
-fuzz: CPPFLAGS     := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
-fuzz: CPPFLAGS     +=-DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
-fuzz: LDLIBS       += -lrt
+fuzz: CC             := clang
+fuzz: CFLAGS         += -g
+fuzz: CPPFLAGS       := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
+fuzz: CPPFLAGS       +=-DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
+fuzz: LDLIBS         += -lrt
 fuzz: $(fuzzbin) $(fuzzgen)
 
 .PHONY: fuzzrun
-fuzzrun: CC        := clang
-fuzzrun: CFLAGS    += -g
-fuzzrun: CPPFLAGS  := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
-fuzzrun: CPPFLAGS  +=-DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
-fuzzrun: LDLIBS    += -lrt
+fuzzrun: CC          := clang
+fuzzrun: CFLAGS      += -g
+fuzzrun: CPPFLAGS    := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
+fuzzrun: CPPFLAGS    +=-DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
+fuzzrun: LDLIBS      += -lrt
 fuzzrun: $(fuzzbin) $(fuzzgen)
 	$(QUIET)$< $(FUZZFLAGS)
+
+.PHONY: fuzzmerge
+fuzzmerge: $(call require-corpora,fuzzmerge)
+fuzzmerge: CC       := clang
+fuzzmerge: CFLAGS   += -fsanitize=fuzzer,address,undefined -g
+fuzzmerge: CPPFLAGS := $(filter-out -DNDEBUG,$(CPPFLAGS)) -D_GNU_SOURCE
+fuzzmerge: CPPFLAGS += -DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
+fuzzmerge: LDFLAGS  += -fsanitize=fuzzer,address,undefined
+fuzzmerge: $(fuzzmerger)
+	$(QUIET)$^ $(FUZZMERGEFLAGS)
 
 $(builddir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
