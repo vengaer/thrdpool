@@ -19,9 +19,15 @@
 static unsigned processed;
 static unsigned parsum;
 
+static pthread_mutex_t lock;
+static pthread_cond_t cv;
+
 static void accumulate(void *p) {
+    pthread_mutex_lock(&lock);
     parsum += *(uint8_t *)p;
     ++processed;
+    pthread_mutex_unlock(&lock);
+    pthread_cond_signal(&cv);
 }
 
 thrdpool_decl(pool, 1);
@@ -44,19 +50,23 @@ static bool process(uint8_t const *data, size_t size) {
         }
     }
 
+    pthread_mutex_lock(&lock);
     while(processed < size) {
-        pthread_yield();
+        pthread_cond_wait(&cv, &lock);
     }
 
     if(seqsum != parsum) {
         fprintf(stderr, "Sums do not match, sequential: %u, parallel: %u\n", seqsum, parsum);
         success = false;
     }
+    pthread_mutex_unlock(&lock);
 
     return success;
 }
 
 static void cleanup(void) {
+    pthread_mutex_destroy(&lock);
+    pthread_cond_destroy(&cv);
     thrdpool_destroy(&pool);
 }
 
@@ -67,6 +77,8 @@ int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size) {
     static bool initialized = false;
     if(!initialized) {
         assert(thrdpool_init(&pool));
+        assert(!pthread_mutex_init(&lock, 0));
+        assert(!pthread_cond_init(&cv, 0));
         atexit(cleanup);
         initialized = true;
     }
