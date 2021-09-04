@@ -40,8 +40,8 @@ struct thrdpool {
 #define thrdpool_idle_workers(u)                    \
     thrdpool_idle_impl(&(u)->d_pool)
 
-#define thrdpool_scheduled_tasks(u)                 \
-    thrdpool_scheduled_tasks_impl(&(u)->d_pool)
+#define thrdpool_pending(u)                         \
+    thrdpool_pending_impl(&(u)->d_pool)
 
 #define thrdpool_destroy(u)                         \
     thrdpool_destroy_impl(&(u)->d_pool)
@@ -64,7 +64,7 @@ inline size_t thrdpool_idle_impl(struct thrdpool *pool) {
     return idle;
 }
 
-inline size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool) {
+inline size_t thrdpool_pending_impl(struct thrdpool *pool) {
     size_t ntasks;
     pthread_mutex_lock(&pool->lock);
     ntasks = thrdpool_taskq_size(&pool->q);

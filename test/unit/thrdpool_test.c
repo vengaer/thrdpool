@@ -112,7 +112,7 @@ void test_scheduling_taskq_capacity(void) {
         pthread_cond_wait(&cv, &lock);
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), 0u);
     TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_taskq_capacity(&pool) + 1u));
 
     pthread_mutex_unlock(&lock);
@@ -142,7 +142,7 @@ void test_scheduling_20_workers(void) {
         pthread_cond_wait(&cv, &lock);
     }
 
-    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_scheduled_tasks(&pool));
+    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_pending(&pool));
     TEST_ASSERT_EQUAL_UINT32(max_enq, value);
 
     pthread_mutex_unlock(&lock);
@@ -170,7 +170,7 @@ void test_scheduling_128_workers(void) {
         pthread_cond_wait(&cv, &lock);
     }
 
-    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_scheduled_tasks(&pool));
+    TEST_ASSERT_EQUAL_UINT32(0u, (unsigned)thrdpool_pending(&pool));
     TEST_ASSERT_EQUAL_UINT32(max_enq, value);
 
     pthread_mutex_unlock(&lock);
@@ -178,7 +178,7 @@ void test_scheduling_128_workers(void) {
     TEST_ASSERT_TRUE(thrdpool_destroy(&pool));
 }
 
-void test_scheduled_tasks(void) {
+void test_pending(void) {
     static struct signalargs args;
 
     TEST_ASSERT_EQUAL_INT32(pthread_mutex_init(&args.lock, 0), 0);
@@ -202,17 +202,17 @@ void test_scheduled_tasks(void) {
      * global lock */
     for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
         TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
-        TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), i + 1u);
+        TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), i + 1u);
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_taskq_capacity(&pool));
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), thrdpool_taskq_capacity(&pool));
 
     /* Wait for worker to finish */
     while(args.value < thrdpool_taskq_capacity(&pool) + 1u) {
         pthread_cond_wait(&cv, &lock);
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), 0u);
     TEST_ASSERT_EQUAL_UINT32(args.value, (unsigned)(thrdpool_taskq_capacity(&pool) + 1u));
 
     pthread_mutex_unlock(&lock);
@@ -249,15 +249,15 @@ void test_schedule_flushing(void) {
         TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
     }
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_taskq_capacity(&pool));
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), thrdpool_taskq_capacity(&pool));
 
     thrdpool_flush(&pool);
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), 0u);
 
     /* Wait for worker to finish */
     pthread_cond_wait(&cv, &lock);
 
-    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), 0u);
+    TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_pending(&pool), 0u);
     TEST_ASSERT_EQUAL_UINT32(1u, args.value);
 
     pthread_mutex_unlock(&lock);

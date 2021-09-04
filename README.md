@@ -65,7 +65,7 @@ Any function with the signature `void name(void *)` may be scheduled for executi
 appended to a FIFO task structure in the thread pool. Once a worker thread finishes a task, it pops the
 next from the queue. If no tasks are available, the worker goes to sleep until one is scheduled.
 
-The size of the task queue may be read using `thrdpool_scheduled_tasks`, whereas the max capacity is
+The size of the task queue may be read using `thrdpool_pending`, whereas the max capacity is
 given by `thrdpool_taskq_capacity`. Clearing the task queue is done by calling `thrdpool_flush`.
 
 ## Library Reference

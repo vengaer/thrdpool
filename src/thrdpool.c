@@ -5,7 +5,7 @@
 #include <string.h>
 
 size_t thrdpool_idle_impl(struct thrdpool *pool);
-size_t thrdpool_scheduled_tasks_impl(struct thrdpool *pool);
+size_t thrdpool_pending_impl(struct thrdpool *pool);
 bool thrdpool_destroy_impl(struct thrdpool *pool);
 void thrdpool_flush_impl(struct thrdpool *pool);
 
