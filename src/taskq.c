@@ -5,11 +5,14 @@ void thrdpool_taskq_pop_back(struct thrdpool_taskq *q);
 size_t thrdpool_taskq_size(struct thrdpool_taskq const *q);
 void thrdpool_taskq_clear(struct thrdpool_taskq *q);
 
-bool thrdpool_taskq_push(struct thrdpool_taskq *restrict q, struct thrdpool_task const *restrict handle) {
+bool thrdpool_taskq_push(struct thrdpool_taskq *q, thrdpool_taskhandle task, void *args) {
     if(q->size == thrdpool_arrsize(q->tasks)) {
         return false;
     }
-    q->tasks[thrdpool_mod_size(q->start + q->size)] = *handle;
+    q->tasks[thrdpool_mod_size(q->start + q->size)] = (struct thrdpool_task) {
+        .handle = task,
+        .args = args
+    };
     ++q->size;
     assert(q->size <= thrdpool_arrsize(q->tasks));
     return true;

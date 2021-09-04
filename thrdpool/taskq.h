@@ -31,7 +31,7 @@ struct thrdpool_taskq {
 
 #define thrdpool_taskq_init() (struct thrdpool_taskq) { .start = 0u, .size = 0u }
 
-bool thrdpool_taskq_push(struct thrdpool_taskq *restrict q, struct thrdpool_task const *restrict handle);
+bool thrdpool_taskq_push(struct thrdpool_taskq *restrict q, thrdpool_taskhandle task, void *args);
 struct thrdpool_task *thrdpool_taskq_front(struct thrdpool_taskq *q);
 
 inline void thrdpool_taskq_pop_front(struct thrdpool_taskq *q) {

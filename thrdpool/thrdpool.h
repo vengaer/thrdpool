@@ -31,8 +31,8 @@ struct thrdpool {
 #define thrdpool_init(u)                            \
     thrdpool_init_impl(&(u)->d_pool, (sizeof(*u) - sizeof((u)->d_pool)) / sizeof(pthread_t))
 
-#define thrdpool_schedule(u, ...)                   \
-    thrdpool_schedule_impl(&(u)->d_pool, __VA_ARGS__)
+#define thrdpool_schedule(u, func, args)            \
+    thrdpool_schedule_impl(&(u)->d_pool, func, args)
 
 #define thrdpool_size(u)                            \
     (u)->d_pool.size
@@ -54,7 +54,7 @@ struct thrdpool {
 
 bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity);
 
-bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_task const *restrict task);
+bool thrdpool_schedule_impl(struct thrdpool *pool, thrdpool_taskhandle task, void *args);
 
 inline size_t thrdpool_idle_impl(struct thrdpool *pool) {
     size_t idle;

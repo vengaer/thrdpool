@@ -68,7 +68,7 @@ void test_basic_scheduling(void) {
     TEST_ASSERT_TRUE(thrdpool_init(&pool));
 
     pthread_mutex_lock(&lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_inc, &value));
 
     pthread_cond_wait(&cv, &lock);
 
@@ -91,7 +91,7 @@ void test_scheduling_taskq_capacity(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -101,11 +101,11 @@ void test_scheduling_taskq_capacity(void) {
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
     for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
     }
 
     /* Task queue full at this point */
-    TEST_ASSERT_FALSE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_FALSE(thrdpool_schedule(&pool, task_signal, &args));
 
     /* Wait for worker to finish */
     while(args.value < thrdpool_taskq_capacity(&pool) + 1u) {
@@ -133,7 +133,7 @@ void test_scheduling_20_workers(void) {
 
     for(unsigned i = 0u; i < max_enq; i++) {
         /* If queue is full, allow workers some time to pick tasks */
-        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value })) {
+        while(!thrdpool_schedule(&pool, task_inc, &value)) {
             pthread_yield();
         }
     }
@@ -161,7 +161,7 @@ void test_scheduling_128_workers(void) {
 
     for(unsigned i = 0u; i < max_enq; i++) {
         /* If queue is full, allow workers time to pick tasks */
-        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_inc, .args = &value })) {
+        while(!thrdpool_schedule(&pool, task_inc, &value)) {
             pthread_yield();
         }
     }
@@ -191,7 +191,7 @@ void test_scheduled_tasks(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -201,7 +201,7 @@ void test_scheduled_tasks(void) {
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
     for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
         TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), i + 1u);
     }
 
@@ -236,7 +236,7 @@ void test_schedule_flushing(void) {
 
     /* Schedule first task */
     pthread_mutex_lock(&args.lock);
-    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+    TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
 
     /* Wait for worker to grab job from pool */
     pthread_cond_wait(&args.cv, &args.lock);
@@ -246,7 +246,7 @@ void test_schedule_flushing(void) {
     /* Schedule enough jobs to fill up the queue while still holding
      * global lock */
     for(unsigned i = 0u; i < thrdpool_taskq_capacity(&pool); i++) {
-        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = task_signal, .args = &args }));
+        TEST_ASSERT_TRUE(thrdpool_schedule(&pool, task_signal, &args));
     }
 
     TEST_ASSERT_EQUAL_UINT32((unsigned)thrdpool_scheduled_tasks(&pool), thrdpool_taskq_capacity(&pool));

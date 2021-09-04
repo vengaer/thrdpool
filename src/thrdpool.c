@@ -127,11 +127,11 @@ epilogue:
     return success;
 }
 
-bool thrdpool_schedule_impl(struct thrdpool *restrict pool, struct thrdpool_task const *restrict task) {
+bool thrdpool_schedule_impl(struct thrdpool *pool, void(*task)(void *), void *args) {
     bool success;
 
     pthread_mutex_lock(&pool->lock);
-    success = thrdpool_taskq_push(&pool->q, task);
+    success = thrdpool_taskq_push(&pool->q, task, args);
     pthread_mutex_unlock(&pool->lock);
 
     if(success) {

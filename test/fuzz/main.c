@@ -86,7 +86,7 @@ bool process(struct shmbuf *shmb) {
 
     for(unsigned i = 0; i < size; i++) {
         seqsum += data[i];
-        while(!thrdpool_schedule(&pool, &(struct thrdpool_task) { .handle = accumulate, &data[i] })) {
+        while(!thrdpool_schedule(&pool, accumulate, &data[i])) {
             pthread_yield();
         }
     }

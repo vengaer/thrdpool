@@ -40,7 +40,7 @@ int main(void) {
     }
 
     for(unsigned i = 0; i < 40u; i++) {
-        while(!thrdpool_schedule(&p, &(struct thrdpool_task) { .handle = triple, .args = &values[i] })) {
+        while(!thrdpool_schedule(&p, triple, &values[i])) {
             /* Queue is full, yield */
             pthread_yield();
         }
@@ -63,7 +63,7 @@ int main(void) {
 
 Any function with the signature `void name(void *)` may be scheduled for execution. Scheduled tasks are
 appended to a FIFO task structure in the thread pool. Once a worker thread finishes a task, it pops the
-next from the queue. If not tasks are available, the worker goes to sleep until one is scheduled.
+next from the queue. If no tasks are available, the worker goes to sleep until one is scheduled.
 
 The size of the task queue may be read using `thrdpool_scheduled_tasks`, whereas the max capacity is
 given by `thrdpool_taskq_capacity`. Clearing the task queue is done by calling `thrdpool_flush`.
@@ -91,18 +91,10 @@ tasks in the task queue, if any, are ignored.
 
 Returns: `true` if workers could be joined and synchronization primitives destroyed.
 
-#### `bool thrdpool_schedule(/* pooltype */ *restrict pool, struct thrdpool_task const *restrict task)`
+#### `bool thrdpool_schedule(/* pooltype */ * pool, void(*task)(void *), void *args)`
 
-Add a task to `pool`'s task queue.  A task is defined as
-
-```c
-struct thrdpool_task {
-    /* The function to execute */
-    void(*handle)(void *);
-    /* Args passed to the function */
-    void *args;
-};
-```
+Add a task to `pool`'s task queue. The `args` parameter is passed on to `task` when invoked, meaning
+the data must be both accessible and valid for the entire lifetime of the task.
 
 The success of the operation depends on the number of tasks currently scheduled. The default capacity 
 of the task queue is 32 but can be overridden by defining the `THRDPOOL_TASKQ_CAPACITY` before the
