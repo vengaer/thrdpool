@@ -1,4 +1,5 @@
 include scripts/fuzz.mk
+include scripts/macros.mk
 
 libname      := libthrdpool
 
@@ -23,6 +24,8 @@ builddir     := $(root)/build
 gendir       := $(builddir)/gen
 unitbuilddir := $(builddir)/test
 fuzzbuilddir := $(builddir)/fuzz
+fuzzgendir   := $(fuzzbuilddir)/gen
+fuzzbindir   := $(fuzzbuilddir)/bin
 
 unitydir     := $(root)/unity
 unityarchive := $(unitydir)/libunity.a
@@ -58,54 +61,13 @@ QUIET        := @
 
 obj          := $(patsubst $(srcdir)/%.$(cext),$(builddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
 testobj      := $(patsubst $(unitdir)/%.$(cext),$(unitbuilddir)/%.$(oext),$(wildcard $(unitdir)/*.$(cext)))
-fuzzbinobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/main.$(cext)) \
-                $(patsubst $(srcdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
-fuzzgenobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/fuzzer.$(cext))
+fuzzbinobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbindir)/%.$(oext),$(fuzzdir)/main.$(cext)) \
+                $(patsubst $(srcdir)/%.$(cext),$(fuzzbindir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
+fuzzgenobj   := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzgendir)/%.$(oext),$(fuzzdir)/fuzzer.$(cext)) \
+                $(patsubst $(srcdir)/%.$(cext),$(fuzzgendir)/%.$(oext),$(wildcard $(srcdir)/*.$(cext)))
 fuzzmergeobj := $(patsubst $(fuzzdir)/%.$(cext),$(fuzzbuilddir)/%.$(oext),$(fuzzdir)/merger.$(cext))
 
-define gen-test-link-rules
-$(strip
-    $(foreach __o,$(testobj),
-        $(eval
-            $(eval __bin := $(builddir)/$(basename $(notdir $(__o))))
-            $(__bin): $(__o) $(patsubst %.$(oext),%_runner.$(oext),$(__o)) $(archive) $(unityarchive) | $(builddir)
-	            $$(info [LD] $$(notdir $$@))
-	            $(QUIET)$(CC) -o $$@ $$^ $$(LDFLAGS) $$(LDLIBS)
-
-            check_$(notdir $(__bin)): $(__bin)
-	            $(QUIET)$$^
-
-            test: $(__bin)
-            check: check_$(notdir $(__bin)))))
-endef
-
-define find-fuzzsrc
-$(strip
-    $(if $(findstring $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(1)),$(wildcard $(srcdir)/*.$(cext))),
-        $(patsubst $(fuzzbuilddir)/%.$(oext),$(srcdir)/%.$(cext),$(1)),
-      $(patsubst $(fuzzbuilddir)/%.$(oext),$(fuzzdir)/%.$(cext),$(1))))
-endef
-
-define gen-fuzz-build-rules
-$(strip
-    $(foreach __o,$(fuzzbinobj),
-        $(eval
-                $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
-	            $$(info [CC] $$(notdir $$@))
-	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=thread,undefined))
-
-    $(foreach __o,$(fuzzgenobj),
-        $(eval
-            $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
-	            $$(info [CC] $$(notdir $$@))
-	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=fuzzer,address,undefined))
-
-    $(foreach __o,$(fuzzmergeobj),
-        $(eval
-            $(__o): $(call find-fuzzsrc,$(__o)) | $(fuzzbuilddir)
-	            $$(info [CC] $$(notdir $$@))
-	            $(QUIET)$$(CC) -o $$@ $$^ $$(CFLAGS) $$(CPPFLAGS) -fsanitize=fuzzer,address,undefined)))
-endef
+export LLVM_PROFILE_FILE
 
 .PHONY: all
 all: $(archive) $(solib)
@@ -144,7 +106,6 @@ $(unityarchive):
 	$(QIUET)$(MAKE) -C $(unitydir)
 
 $(call gen-test-link-rules)
-
 $(call gen-fuzz-build-rules)
 
 $(fuzzbin): $(fuzzbinobj)
@@ -153,7 +114,7 @@ $(fuzzbin): $(fuzzbinobj)
 
 $(fuzzgen): $(fuzzgenobj)
 	$(info [LD] $(notdir $@))
-	$(QUIET)$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) -fsanitize=fuzzer,address,undefined
+	$(QUIET)$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) -fsanitize=fuzzer,address,undefined -fprofile-instr-generate -fcoverage-mapping
 
 $(fuzzmerger): $(fuzzmergeobj)
 	$(info [LD] $(notdir $@))
@@ -185,6 +146,9 @@ fuzzrun: CPPFLAGS    +=-DFUZZ_MAXLEN=$(FUZZLEN) -DFUZZER_GENPATH=$(fuzzgen)
 fuzzrun: LDLIBS      += -lrt
 fuzzrun: $(fuzzbin) $(fuzzgen)
 	$(QUIET)$< $(FUZZFLAGS)
+	$(QUIET)llvm-profdata $(PROFFLAGS)
+	$(QUIET)llvm-cov $(COVFLAGS)
+	$(QUIET)llvm-cov $(COVREPFLAGS)
 
 .PHONY: fuzzmerge
 fuzzmerge: $(call require-corpora,fuzzmerge)
@@ -206,6 +170,12 @@ $(gendir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
 
 $(fuzzbuilddir):
+	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
+
+$(fuzzbindir):
+	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
+
+$(fuzzgendir):
 	$(QUIET)$(MKDIR) $(MKDIRFLAGS) $@
 
 .PHONY: clean

@@ -27,7 +27,7 @@ static unsigned parsum;
 static unsigned volatile child_alive = 1;
 static unsigned volatile alive = 1;
 
-void sighandler(int sig) {
+static void sighandler(int sig) {
     switch(sig) {
         case SIGCHLD:
             child_alive = 0;
@@ -42,7 +42,7 @@ void sighandler(int sig) {
     }
 }
 
-bool set_sighandler(void) {
+static bool set_sighandler(void) {
     struct sigaction sa = { 0 };
     sa.sa_handler = sighandler;
     sigemptyset(&sa.sa_mask);
@@ -57,7 +57,7 @@ bool set_sighandler(void) {
     return true;
 }
 
-void accumulate(void *p) {
+static void accumulate(void *p) {
     pthread_mutex_lock(&lock);
     parsum += *(uint8_t *)p;
     ++processed;
@@ -67,7 +67,7 @@ void accumulate(void *p) {
 
 thrdpool_decl(pool, 32);
 
-bool process(struct shmbuf *shmb) {
+static bool process(struct shmbuf *shmb) {
     unsigned seqsum = 0u;
     bool success = true;
 
