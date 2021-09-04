@@ -106,7 +106,7 @@ Returns: `true` is the task could be pushed to the queue.
 
 Returns: The total number of worker threads in the pool.
 
-#### `size_t thrdpool_pending_tasks(/* pooltype */ *pool)`
+#### `size_t thrdpool_pending(/* pooltype */ *pool)`
 
 Returns: The number of tasks in the queue (i.e. tasks that are yet to be executed)
 
