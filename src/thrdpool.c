@@ -57,7 +57,7 @@ bool thrdpool_destroy_internal(struct thrdpool *pool, size_t nthreads) {
     /* Wake up worker threads */
     err = pthread_cond_broadcast(&pool->cv);
     if(err) {
-        fprintf(stderr, "Error unblocking threads for joining: %s\n", strerror(errno));
+        fprintf(stderr, "Error unblocking threads for joining: %s\n", strerror(err));
         /* Attempting to join would block indefinitely */
         return false;
     }
@@ -65,19 +65,19 @@ bool thrdpool_destroy_internal(struct thrdpool *pool, size_t nthreads) {
     for(size_t i = 0u; i < nthreads; i++) {
         err = pthread_join(pool->workers[i], 0);
         if(err) {
-            fprintf(stderr, "Error joining worker %zu: %s\n", i, strerror(errno));
+            fprintf(stderr, "Error joining worker %zu: %s\n", i, strerror(err));
             success = false;
         }
     }
 
     err = pthread_mutex_destroy(&pool->lock);
     if(err) {
-        fprintf(stderr, "Error destroying mutex: %s\n", strerror(errno));
+        fprintf(stderr, "Error destroying mutex: %s\n", strerror(err));
         success = false;
     }
     err = pthread_cond_destroy(&pool->cv);
     if(err) {
-        fprintf(stderr, "Error destroying condition variable: %s\n", strerror(errno));
+        fprintf(stderr, "Error destroying condition variable: %s\n", strerror(err));
         success = false;
     }
 
@@ -100,13 +100,13 @@ bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
 
     err = pthread_cond_init(&pool->cv, 0);
     if(err) {
-        fprintf(stderr, "Error intializing condition variable: %s\n", strerror(errno));
+        fprintf(stderr, "Error intializing condition variable: %s\n", strerror(err));
         return false;
     }
 
     err = pthread_mutex_init(&pool->lock, 0);
     if(err) {
-        fprintf(stderr, "Error initializing mutex: %s\n", strerror(errno));
+        fprintf(stderr, "Error initializing mutex: %s\n", strerror(err));
         pthread_cond_destroy(&pool->cv);
         return false;
     }
@@ -114,7 +114,7 @@ bool thrdpool_init_impl(struct thrdpool *pool, size_t capacity) {
     for(; nthreads < pool->size; nthreads++) {
         err = pthread_create(&pool->workers[nthreads], 0, thrdpool_wait, pool);
         if(err) {
-            fprintf(stderr, "Error forking thread %zu: %s\n", nthreads, strerror(errno));
+            fprintf(stderr, "Error forking thread %zu: %s\n", nthreads, strerror(err));
             goto epilogue;
         }
     }
