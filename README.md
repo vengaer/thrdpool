@@ -21,8 +21,16 @@ The following is a simple example of the above
 #include <thrdpool/thrdpool.h>
 #include <pthread.h>
 
+static pthread_mutex_t lock;
+static pthread_cond_t cv;
+static unsigned processed;
+
 void triple(void *i) {
     *(unsigned *)i *= 3u;
+    pthread_mutex_lock(&lock);
+    ++processed;
+    pthread_mutex_unlock(&lock);
+    pthread_cond_signal(&cv);
 }
 
 int main(void) {
@@ -31,6 +39,9 @@ int main(void) {
     for(unsigned i = 0u; i < 40u; i++) {
         values[i] = i + 1;
     }
+
+    assert(!pthread_mutex_init(&lock, 0));
+    assert(!pthread_cond_init(&cv, 0));
 
     /* Thread pool p with 40 threads */
     thrdpool_decl(p, 40u);
@@ -46,6 +57,13 @@ int main(void) {
         }
     }
 
+    /* Wait for processing to finish */
+    pthread_mutex_lock(&lock);
+    while(processed < 40u) {
+        pthread_cond_wait(&cv, &lock);
+    }
+    pthread_mutex_unlock(&lock);
+
     /* Join threads and destroy synchronization primitives */
     if(!thrdpool_destroy(&p)) {
         return 1;
@@ -55,6 +73,8 @@ int main(void) {
         assert(values[i] == (i + 1) * 3u);
     }
 
+    pthread_mutex_destroy(&lock);
+    pthread_cond_destroy(&cv);
     return 0;
 }
 ```
